@@ -56,17 +56,21 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
 {
     int confirms = wtx.GetDepthInMainChain();
     entry.push_back(Pair("confirmations", confirms));
+
     if (wtx.IsCoinBase() || wtx.IsCoinStake())
         entry.push_back(Pair("generated", true));
+
     if (confirms > 0)
     {
         entry.push_back(Pair("blockhash", wtx.hashBlock.GetHex()));
         entry.push_back(Pair("blockindex", wtx.nIndex));
         entry.push_back(Pair("blocktime", (int64_t)(mapBlockIndex[wtx.hashBlock]->nTime)));
     }
+
     entry.push_back(Pair("txid", wtx.GetHash().GetHex()));
     entry.push_back(Pair("time", (int64_t)wtx.GetTxTime()));
     entry.push_back(Pair("timereceived", (int64_t)wtx.nTimeReceived));
+
     BOOST_FOREACH(const PAIRTYPE(string,string)& item, wtx.mapValue)
         entry.push_back(Pair(item.first, item.second));
 }
@@ -1101,7 +1105,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 }
 
                 // only do this calculation on the position of the stake
-                if (r.vout == 1)
+                if (r.vout == 1 && wtx.IsCoinStake())
                     entry.push_back(Pair("amount", ValueFromAmount(nNet)));
                 else
                     entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
@@ -1109,7 +1113,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 if (pwalletMain->mapAddressBook.count(r.destination))
                     entry.push_back(Pair("label", account));
 
-                entry.push_back(Pair("vout", r.vout > 2 ? r.vout - 1 : r.vout));
+                entry.push_back(Pair("vout", wtx.IsCoinStake() && r.vout > 2 ? r.vout - 1 : r.vout));
 
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
@@ -1344,6 +1348,7 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
         int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
 
         entry.push_back(Pair("amount", ValueFromAmount(nNet - nFee)));
+
         if (wtx.IsFromMe())
             entry.push_back(Pair("fee", ValueFromAmount(nFee)));
 
