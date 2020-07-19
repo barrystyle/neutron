@@ -48,7 +48,12 @@ void CActiveMasternode::ManageStatus(CConnman& connman)
         CPubKey pubKeyCollateralAddress;
         CKey keyCollateralAddress;
         int mnTotal = 0;
-        for (const auto item : strMasterNodePrivKey) mnTotal++;
+        for (const auto item : strMasterNodePrivKey) {
+           if (item.size() < 16)
+               break;
+           else
+               mnTotal++;
+        }
         for (int mnInstance = 0; mnInstance < mnTotal; mnInstance++)
         {
             if(GetMasterNodeVin(vin[mnInstance], pubKeyCollateralAddress, keyCollateralAddress))
@@ -120,7 +125,12 @@ bool CActiveMasternode::StopMasterNode(std::string& errorMessage) {
     CKey keyMasternode;
     int fResultIsGood = 0;
     int mnTotal = 0;
-    for (const auto item : strMasterNodePrivKey) mnTotal++;
+    for (const auto item : strMasterNodePrivKey) {
+       if (item.size() < 16)
+           break;
+       else
+           mnTotal++;
+    }
     for (int mnInstance = 0; mnInstance < mnTotal; mnInstance++)
     {
         if(!darkSendSigner.SetKey(strMasterNodePrivKey[mnInstance], errorMessage, keyMasternode, pubKeyMasternode))
@@ -153,7 +163,12 @@ bool CActiveMasternode::Dseep(std::string& errorMessage) {
     CKey keyMasternode;
     int fResultIsGood = 0;
     int mnTotal = 0;
-    for (const auto item : strMasterNodePrivKey) mnTotal++;
+    for (const auto item : strMasterNodePrivKey) {
+       if (item.size() < 16)
+           break;
+       else
+           mnTotal++;
+    }
     for (int mnInstance = 0; mnInstance < mnTotal; mnInstance++)
     {
         if(!darkSendSigner.SetKey(strMasterNodePrivKey[mnInstance], errorMessage, keyMasternode, pubKeyMasternode))
