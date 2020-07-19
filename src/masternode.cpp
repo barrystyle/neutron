@@ -234,10 +234,6 @@ void ProcessMessageMasternode(CNode* pfrom, std::string& strCommand, CDataStream
             mn.UpdateLastSeen(lastUpdated);
             vecMasternodes.push_back(mn);
 
-            // if it matches our masternodeprivkey, then we've been remotely activated
-            if (pubkey2 == activeMasternode.pubKeyMasternode && protocolVersion == PROTOCOL_VERSION)
-                activeMasternode.EnableHotColdMasterNode(vin, addr);
-
             if (count == -1 && !isLocal)
             {
                 RelayDarkSendElectionEntry(vin, addr, vchSig, sigTime, pubkey, pubkey2, count,

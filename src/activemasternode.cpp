@@ -6,6 +6,7 @@
 #include "activemasternode.h"
 #include <boost/lexical_cast.hpp>
 #include "clientversion.h"
+#include "util.h"
 
 //
 // Bootup the masternode, look for a 25000 NTRN input and register on the network
@@ -67,39 +68,42 @@ void CActiveMasternode::ManageStatus(CConnman& connman)
         // Choose coins to use
         CPubKey pubKeyCollateralAddress;
         CKey keyCollateralAddress;
-
-        if(GetMasterNodeVin(vin, pubKeyCollateralAddress, keyCollateralAddress)) {
-
-            if(GetInputAge(vin) < MASTERNODE_MIN_CONFIRMATIONS){
-                LogPrintf("CActiveMasternode::ManageStatus() - Input must have least %d confirmations - %d confirmations\n", MASTERNODE_MIN_CONFIRMATIONS, GetInputAge(vin));
-                status = MASTERNODE_INPUT_TOO_NEW;
-                return;
-            }
-
-            LogPrintf("CActiveMasternode::ManageStatus() - Is capable master node!\n");
-
-            status = MASTERNODE_IS_CAPABLE;
-            notCapableReason = "";
-
-            pwalletMain->LockCoin(vin.prevout);
-
-            // send to all nodes
-            CPubKey pubKeyMasternode;
-            CKey keyMasternode;
-
-            if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode))
+        int mnTotal = 0;
+        for (const auto item : strMasterNodePrivKey) mnTotal++;
+        for (int mnInstance = 0; mnInstance < mnTotal; mnInstance++)
+        {
+            if(GetMasterNodeVin(vin[mnInstance], pubKeyCollateralAddress, keyCollateralAddress))
             {
-                LogPrintf("Register::ManageStatus() - Error upon calling SetKey: %s\n", errorMessage.c_str());
+                if(GetInputAge(vin[mnInstance]) < MASTERNODE_MIN_CONFIRMATIONS){
+                    LogPrintf("CActiveMasternode::ManageStatus() - Input must have least %d confirmations - %d confirmations\n", MASTERNODE_MIN_CONFIRMATIONS, GetInputAge(vin[mnInstance]));
+                    status = MASTERNODE_INPUT_TOO_NEW;
+                    return;
+                }
+
+                LogPrintf("CActiveMasternode::ManageStatus() - Is capable master node!\n");
+
+                status = MASTERNODE_IS_CAPABLE;
+                notCapableReason = "";
+                pwalletMain->LockCoin(vin[mnInstance].prevout);
+
+                // send to all nodes
+                CPubKey pubKeyMasternode;
+                CKey keyMasternode;
+                const auto mnKey = strMasterNodePrivKey[mnInstance];
+                if(!darkSendSigner.SetKey(mnKey, errorMessage, keyMasternode, pubKeyMasternode))
+                {
+                    LogPrintf("Register::ManageStatus() - Error upon calling SetKey: %s\n", errorMessage.c_str());
+                    return;
+                }
+
+                if(!Register(vin[mnInstance], service, keyCollateralAddress, pubKeyCollateralAddress, keyMasternode, pubKeyMasternode, errorMessage)) {
+                    LogPrintf("CActiveMasternode::ManageStatus() - Error on Register: %s\n", errorMessage.c_str());
+                }
+
                 return;
+            } else {
+                LogPrintf("CActiveMasternode::ManageStatus() - Could not find suitable coins!\n");
             }
-
-            if(!Register(vin, service, keyCollateralAddress, pubKeyCollateralAddress, keyMasternode, pubKeyMasternode, errorMessage)) {
-                LogPrintf("CActiveMasternode::ManageStatus() - Error on Register: %s\n", errorMessage.c_str());
-            }
-
-            return;
-        } else {
-            LogPrintf("CActiveMasternode::ManageStatus() - Could not find suitable coins!\n");
         }
     }
 
@@ -135,14 +139,22 @@ bool CActiveMasternode::StopMasterNode(std::string& errorMessage) {
 
     CPubKey pubKeyMasternode;
     CKey keyMasternode;
-
-    if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode))
+    int fResultIsGood = 0;
+    int mnTotal = 0;
+    for (const auto item : strMasterNodePrivKey) mnTotal++;
+    for (int mnInstance = 0; mnInstance < mnTotal; mnInstance++)
     {
-        LogPrintf("Register::ManageStatus() - Error upon calling SetKey: %s\n", errorMessage.c_str());
-        return false;
+        if(!darkSendSigner.SetKey(strMasterNodePrivKey[mnInstance], errorMessage, keyMasternode, pubKeyMasternode))
+        {
+            LogPrintf("Register::ManageStatus() - Error upon calling SetKey: %s\n", errorMessage.c_str());
+        }
+        bool fSuccess = StopMasterNode(vin[mnInstance], service, keyMasternode, pubKeyMasternode, errorMessage);
+        fResultIsGood += fSuccess;
     }
 
-    return StopMasterNode(vin, service, keyMasternode, pubKeyMasternode, errorMessage);
+    LogPrintf("%s : Success with %d/%d masternode instances\n", __func__, fResultIsGood, mnTotal);
+
+    return (fResultIsGood > 0);
 }
 
 // Send stop dseep to network for any masternode
@@ -160,14 +172,21 @@ bool CActiveMasternode::Dseep(std::string& errorMessage) {
 
     CPubKey pubKeyMasternode;
     CKey keyMasternode;
-
-    if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode))
+    int fResultIsGood = 0;
+    int mnTotal = 0;
+    for (const auto item : strMasterNodePrivKey) mnTotal++;
+    for (int mnInstance = 0; mnInstance < mnTotal; mnInstance++)
     {
-        LogPrintf("Register::ManageStatus() - Error upon calling SetKey: %s\n", errorMessage.c_str());
-        return false;
+        if(!darkSendSigner.SetKey(strMasterNodePrivKey[mnInstance], errorMessage, keyMasternode, pubKeyMasternode))
+        {
+            LogPrintf("Register::ManageStatus() - Error upon calling SetKey: %s\n", errorMessage.c_str());
+        }
+        bool fSuccess = Dseep(vin[mnInstance], service, keyMasternode, pubKeyMasternode, errorMessage, false);
+        fResultIsGood += fSuccess;
     }
+    LogPrintf("%s : Success with %d/%d masternode instances\n", __func__, fResultIsGood, mnTotal);
 
-    return Dseep(vin, service, keyMasternode, pubKeyMasternode, errorMessage, false);
+    return (fResultIsGood > 0);
 }
 
 bool CActiveMasternode::Dseep(CTxIn vin, CService service, CKey keyMasternode, CPubKey pubKeyMasternode, std::string &retErrorMessage, bool stop) {
@@ -305,7 +324,8 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
     return GetMasterNodeVin(vin, pubkey, secretKey, "", "");
 }
 
-bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex) {
+bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex, const int nMasternodeInstance) {
+
     CScript pubScript;
 
     // Find possible candidates
@@ -318,12 +338,17 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
         uint256 txHash(strTxHash);
         int outputIndex = boost::lexical_cast<int>(strOutputIndex);
         bool found = false;
-        BOOST_FOREACH(COutput& out, possibleCoins) {
+        int nMnIter = 0;
+        for (COutput& out : possibleCoins) {
             if(out.tx->GetHash() == txHash && out.i == outputIndex)
             {
-                selectedOutput = &out;
-                found = true;
-                break;
+                if (nMnIter == nMasternodeInstance) {
+                    selectedOutput = &out;
+                    found = true;
+                    break;
+                } else {
+                    nMnIter++;
+                }
             }
         }
         if(!found) {
@@ -456,44 +481,3 @@ vector<COutput> CActiveMasternode::SelectCoinsMasternodeForPubKey(std::string co
     return filteredCoins;
 }
 
-
-/* select coins with specified transaction hash and output index */
-/*
-bool CActiveMasternode::SelectCoinsMasternode(CTxIn& vin, int64& nValueIn, CScript& pubScript, std::string strTxHash, std::string strOutputIndex)
-{
-    CWalletTx ctx;
-
-    // Convert configuration strings
-    uint256 txHash;
-    int outputIndex;
-    txHash.SetHex(strTxHash);
-    std::istringstream(strOutputIndex) >> outputIndex;
-
-    if(pwalletMain->GetTransaction(txHash, ctx)) {
-        if(ctx.vout[outputIndex].nValue == 1000*COIN) { //exactly
-            vin = CTxIn(ctx.GetHash(), outputIndex);
-            pubScript = ctx.vout[outputIndex].scriptPubKey; // the inputs PubKey
-            nValueIn = ctx.vout[outputIndex].nValue;
-        return true;
-        }
-    }
-
-    return false;
-}
-*/
-
-// when starting a masternode, this can enable to run as a hot wallet with no funds
-bool CActiveMasternode::EnableHotColdMasterNode(CTxIn& newVin, CService& newService)
-{
-    if(!fMasterNode) return false;
-
-    status = MASTERNODE_REMOTELY_ENABLED;
-
-    //The values below are needed for signing dseep messages going forward
-    this->vin = newVin;
-    this->service = newService;
-
-    LogPrintf("CActiveMasternode::EnableHotColdMasterNode() - Enabled! You may shut down the cold daemon.\n");
-
-    return true;
-}

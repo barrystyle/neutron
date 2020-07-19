@@ -1160,34 +1160,24 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
             if (!addrTest.IsValid())
                 return InitError("Invalid -masternodeaddr address: " + strMasterNodeAddr);
-
-            //if (addrTest.GetPort() != GetDefaultPort())
-            //{
-            //    std::string errorMessage = strprintf("Invalid -masternodeaddr port %u detected in neutron.conf "
-            //                                         "(only %d is supported for mainnet)",
-            //                                         addrTest.GetPort(), GetDefaultPort());
-            //    return InitError(errorMessage);
-            //}
         }
 
-        strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
+        //! iterate each entry in masternodeconfig
+        std::string errorMessage;
+        CKey key;
+        CPubKey pubkey;
+        int mnInstance = 0;
 
-        if (!strMasterNodePrivKey.empty())
+        for (const auto mne : masternodeConfig.getEntries())
         {
-            std::string errorMessage;
-            CKey key;
-            CPubKey pubkey;
+             strMasterNodePrivKey[mnInstance] = mne.getPrivKey();
+             if (!darkSendSigner.SetKey(strMasterNodePrivKey[mnInstance], errorMessage, key, pubkey))
+                 return InitError(_("Invalid masternodeprivkey. Please see documenation."));
 
-            if (!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, key, pubkey))
-                return InitError(_("Invalid masternodeprivkey. Please see documenation."));
+             printf("masternode instance %d initialized..\n", mnInstance);
 
-            activeMasternode.pubKeyMasternode = pubkey;
-
-        }
-        else
-        {
-            return InitError(_("You must specify a masternodeprivkey in the configuration. "
-                               "Please see documentation for help."));
+             activeMasternode.pubKeyMasternode[mnInstance] = pubkey;
+             ++mnInstance;
         }
     }
 

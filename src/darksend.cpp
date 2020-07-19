@@ -144,7 +144,7 @@ void ProcessMessageDarksend(CNode* pfrom, std::string& strCommand, CDataStream& 
         vRecv >> nDenom >> txCollateral;
 
         std::string error = "";
-        int mn = GetMasternodeByVin(activeMasternode.vin);
+        int mn = GetMasternodeByVin(activeMasternode.vin[0]);
 
         if (mn == -1)
         {
@@ -172,15 +172,6 @@ void ProcessMessageDarksend(CNode* pfrom, std::string& strCommand, CDataStream& 
             }
         }
 
-        // TODO: Remove me
-        // if (!darkSendPool.IsCompatibleWithSession(nDenom, txCollateral, error))
-        // {
-        //     LogPrintf("dsa -- not compatible with existing transactions! \n");
-        //     pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(),
-        //                        darkSendPool.GetEntriesCount(), MASTERNODE_REJECTED, error);
-        //     return;
-        // }
-        // else
         {
             LogPrintf("dsa -- is compatible, please submit! \n");
             pfrom->PushMessage("dssu", darkSendPool.sessionID, darkSendPool.GetState(), darkSendPool.GetEntriesCount(), MASTERNODE_ACCEPTED, error);
@@ -636,7 +627,7 @@ bool CDarksendQueue::Sign()
     CPubKey pubkey2;
     std::string errorMessage = "";
 
-    if (!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, key2, pubkey2))
+    if (!darkSendSigner.SetKey(strMasterNodePrivKey[0], errorMessage, key2, pubkey2))
     {
         LogPrintf("CDarksendQueue():Relay - ERROR: Invalid masternodeprivkey: '%s'\n", errorMessage.c_str());
         return false;

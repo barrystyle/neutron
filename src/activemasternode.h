@@ -19,12 +19,12 @@
 class CActiveMasternode
 {
 public:
-	// Initialized by init.cpp
-	// Keys for the main masternode
-	CPubKey pubKeyMasternode;
+    // Initialized by init.cpp
+    // Keys for the main masternode
+    CPubKey pubKeyMasternode[MAXMASTERNODES];
 
-	// Initialized while registering masternode
-	CTxIn vin;
+    // Initialized while registering masternode
+    CTxIn vin[MAXMASTERNODES];
     CService service;
 
     int status;
@@ -50,17 +50,12 @@ public:
 
     // get 25000 NTRN input that can be used for the masternode
     bool GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
-    bool GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex);
+    bool GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex, const int nMasternodeInstance = 0);
     bool GetMasterNodeVinForPubKey(std::string collateralAddress, CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
     bool GetMasterNodeVinForPubKey(std::string collateralAddress, CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex);
     vector<COutput> SelectCoinsMasternode();
     vector<COutput> SelectCoinsMasternodeForPubKey(std::string collateralAddress);
     bool GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubkey, CKey& secretKey);
-
-    //bool SelectCoinsMasternode(CTxIn& vin, int64& nValueIn, CScript& pubScript, std::string strTxHash, std::string strOutputIndex);
-
-    // enable hot wallet mode (run a masternode with no funds)
-    bool EnableHotColdMasterNode(CTxIn& vin, CService& addr);
 };
 
 #endif

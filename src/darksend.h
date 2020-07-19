@@ -10,6 +10,7 @@
 #include "main.h"
 #include "masternode.h"
 #include "activemasternode.h"
+#include "util.h"
 
 class CTxIn;
 class CDarkSendPool;
@@ -43,7 +44,7 @@ class CActiveMasternode;
 extern CDarkSendPool darkSendPool;
 extern CDarkSendSigner darkSendSigner;
 extern std::vector<CDarksendQueue> vecDarksendQueue;
-extern std::string strMasterNodePrivKey;
+extern std::string strMasterNodePrivKey[MAXMASTERNODES];
 extern map<uint256, CDarksendBroadcastTx> mapDarksendBroadcastTxes;
 extern CActiveMasternode activeMasternode;
 
