@@ -31,29 +31,8 @@ void CActiveMasternode::ManageStatus(CConnman& connman)
         status = MASTERNODE_NOT_PROCESSED;
     }
 
-    if(status == MASTERNODE_NOT_PROCESSED) {
-        if(strMasterNodeAddr.empty()) {
-            if(!GetLocal(service)) {
-                notCapableReason = "Can't detect external address. Please use the masternodeaddr configuration option.";
-                status = MASTERNODE_NOT_CAPABLE;
-                LogPrintf("CActiveMasternode::ManageStatus() - not capable: %s\n", notCapableReason.c_str());
-                return;
-            }
-        } else {
-            service = CService(strMasterNodeAddr);
-        }
-
-        LogPrintf("CActiveMasternode::ManageStatus() - Checking inbound connection to '%s'\n", service.ToString().c_str());
-
-
-        if(!connman.ConnectNode((CAddress)service, service.ToString().c_str())){
-            notCapableReason = "Could not connect to " + service.ToString();
-            status = MASTERNODE_NOT_CAPABLE;
-            LogPrintf("CActiveMasternode::ManageStatus() - not capable: %s\n", notCapableReason.c_str());
-            return;
-        }
-
-
+    if(status == MASTERNODE_NOT_PROCESSED)
+    {
         if(pwalletMain->IsLocked()){
             notCapableReason = "Wallet is locked.";
             status = MASTERNODE_NOT_CAPABLE;
