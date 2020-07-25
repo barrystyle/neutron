@@ -75,7 +75,7 @@ namespace boost {
 using namespace std;
 //Dark  features
 bool fMasterNode = false;
-string strMasterNodePrivKey[MAXMASTERNODES] = "";
+string strMasterNodePrivKey[MAXMASTERNODES];
 string strMasterNodeAddr = "";
 int nDarksendRounds = 2;
 int nAnonymizeNeutronAmount = 500;
